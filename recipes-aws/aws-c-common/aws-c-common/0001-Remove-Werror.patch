@@ -1,0 +1,26 @@
+From 7456ee6d9b09f2c8738706b833a5aaa37599d876 Mon Sep 17 00:00:00 2001
+From: Eric Xu <chi.xu@windriver.com>
+Date: Fri, 9 Jul 2021 08:13:53 +0000
+Subject: [PATCH] Remove Werror
+
+Upstream-Status: Inappropriate [oe specific]
+
+Signed-off-by: Eric Xu <chi.xu@windriver.com>
+Signed-off-by: Wentao Zhang <wentao.zhang@windriver.com>
+---
+ cmake/AwsCFlags.cmake | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/cmake/AwsCFlags.cmake b/cmake/AwsCFlags.cmake
+index 82c16da..329cd0b 100644
+--- a/cmake/AwsCFlags.cmake
++++ b/cmake/AwsCFlags.cmake
+@@ -53,7 +53,7 @@ function(aws_set_common_properties target)
+         list(APPEND AWS_C_FLAGS "${_FLAGS}")
+ 
+     else()
+-        list(APPEND AWS_C_FLAGS -Wall -Werror -Wstrict-prototypes -fno-omit-frame-pointer)
++        list(APPEND AWS_C_FLAGS -Wall -Wstrict-prototypes -fno-omit-frame-pointer)
+ 
+         if(NOT SET_PROPERTIES_NO_WEXTRA)
+             list(APPEND AWS_C_FLAGS -Wextra)
