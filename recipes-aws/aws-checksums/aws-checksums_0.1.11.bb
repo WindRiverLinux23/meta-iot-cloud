@@ -12,6 +12,7 @@ DEPENDS += "\
 
 SRC_URI = "git://github.com/awslabs/${BPN}.git;protocol=https;branch=main \
            file://Build-static-and-shared-libs.patch \
+           file://0001-DUSE_CPU_EXTENSIONS-OFF-forces-generic-checksum-impl.patch \
 "
 
 # v0.1.11

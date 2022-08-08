@@ -1,0 +1,101 @@
+From 13740637ff5021cd56594bcc4e900fc1ed40d924 Mon Sep 17 00:00:00 2001
+From: Michael Graeb <graebm@amazon.com>
+Date: Thu, 30 Sep 2021 14:08:32 -0700
+Subject: [PATCH] -DUSE_CPU_EXTENSIONS=OFF forces generic checksum
+ implementations to be used (#51)
+
+Honor new build flag introduced here: https://github.com/awslabs/aws-c-common/pull/842
+
+Upstream-Status: Backport [41df3031b92120b6d8127b7b7122391d5ac6f33f]
+Signed-off-by: Chen Qi <Qi.Chen@windriver.com>
+---
+ CMakeLists.txt | 66 ++++++++++++++++++++++++++------------------------
+ 1 file changed, 34 insertions(+), 32 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b7a47d1..c232495 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -57,45 +57,47 @@ file(GLOB AWS_ARCH_SRC
+         "source/generic/*.c"
+         )
+ 
+-if (MSVC AND AWS_ARCH_INTEL)
+-    file(GLOB AWS_ARCH_SRC
+-            "source/intel/visualc/*.c"
+-    )
++if (USE_CPU_EXTENSIONS)
++    if (MSVC AND AWS_ARCH_INTEL)
++        file(GLOB AWS_ARCH_SRC
++                "source/intel/visualc/*.c"
++        )
+ 
+-    source_group("Source Files\\intel\\visualc" FILES ${AWS_ARCH_SRC})
++        source_group("Source Files\\intel\\visualc" FILES ${AWS_ARCH_SRC})
+ 
+-elseif(AWS_ARCH_INTEL AND AWS_HAVE_GCC_INLINE_ASM)
+-    file(GLOB AWS_ARCH_SRC
+-            "source/intel/asm/*.c"
+-        )
+-endif()
++    elseif(AWS_ARCH_INTEL AND AWS_HAVE_GCC_INLINE_ASM)
++        file(GLOB AWS_ARCH_SRC
++                "source/intel/asm/*.c"
++            )
++    endif()
+ 
+-if (MSVC AND AWS_ARCH_ARM64)
+-    file(GLOB AWS_ARCH_SRC
+-        "source/arm/*.c"
+-        )
+-    source_group("Source Files\\arm" FILES ${AWS_ARCH_SRC})
++    if (MSVC AND AWS_ARCH_ARM64)
++        file(GLOB AWS_ARCH_SRC
++            "source/arm/*.c"
++            )
++        source_group("Source Files\\arm" FILES ${AWS_ARCH_SRC})
+ 
+-elseif (AWS_ARCH_ARM64)
+-    file(GLOB AWS_ARCH_SRC
+-        "source/arm/*.c"
+-        )
+-     SET_SOURCE_FILES_PROPERTIES(source/arm/crc32c_arm.c PROPERTIES COMPILE_FLAGS -march=armv8-a+crc )
+-elseif ((NOT MSVC) AND AWS_ARCH_ARM32)
+-    set(CMAKE_REQUIRED_FLAGS "-march=armv8-a+crc -Werror")
+-        check_c_source_compiles("
+-#include <arm_acle.h>
+-int main() {
+-    int crc = __crc32d(0, 1);
+-    return 0;
+-    }" AWS_ARM32_CRC)
+-    unset(CMAKE_REQUIRED_FLAGS)
+-    if (AWS_ARM32_CRC)
++    elseif (AWS_ARCH_ARM64)
+         file(GLOB AWS_ARCH_SRC
+             "source/arm/*.c"
+-            "source/arm/asm/*.c"
+             )
+-         SET_SOURCE_FILES_PROPERTIES(source/arm/crc32c_arm.c PROPERTIES COMPILE_FLAGS -march=armv8-a+crc )
++        SET_SOURCE_FILES_PROPERTIES(source/arm/crc32c_arm.c PROPERTIES COMPILE_FLAGS -march=armv8-a+crc )
++    elseif ((NOT MSVC) AND AWS_ARCH_ARM32)
++        set(CMAKE_REQUIRED_FLAGS "-march=armv8-a+crc -Werror")
++        check_c_source_compiles("
++            #include <arm_acle.h>
++            int main() {
++                int crc = __crc32d(0, 1);
++                return 0;
++            }" AWS_ARM32_CRC)
++        unset(CMAKE_REQUIRED_FLAGS)
++        if (AWS_ARM32_CRC)
++            file(GLOB AWS_ARCH_SRC
++                "source/arm/*.c"
++                "source/arm/asm/*.c"
++                )
++            SET_SOURCE_FILES_PROPERTIES(source/arm/crc32c_arm.c PROPERTIES COMPILE_FLAGS -march=armv8-a+crc )
++        endif()
+     endif()
+ endif()
+ 
+-- 
+2.37.0
+
