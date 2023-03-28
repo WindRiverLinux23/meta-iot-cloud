@@ -9,9 +9,9 @@ PR = "r0"
 
 PACKAGES = "${PN}"
 
-PACKAGECONFIG ??= "c python"
+PACKAGECONFIG ??= "sdk-c python"
 
-PACKAGECONFIG[c] = "\
+PACKAGECONFIG[sdk-c] = "\
     , \
     , \
     , \
