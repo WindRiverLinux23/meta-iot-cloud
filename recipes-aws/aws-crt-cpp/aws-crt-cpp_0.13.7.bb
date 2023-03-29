@@ -32,3 +32,7 @@ EXTRA_OECMAKE += "\
     -DBUILD_TESTING=OFF \
     -DCMAKE_PREFIX_PATH=${RECIPE_SYSROOT}/usr \
 "
+
+FILES:${PN}-dev += "\
+    ${libdir}/${PN}/cmake \
+"

@@ -21,3 +21,7 @@ S = "${WORKDIR}/git"
 EXTRA_OECMAKE += "\
     -DBUILD_TESTING=OFF \
 "
+
+FILES:${PN}-dev += "\
+    ${libdir}/${PN}/cmake \
+"

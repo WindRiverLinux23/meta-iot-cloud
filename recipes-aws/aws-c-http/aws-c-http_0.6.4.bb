@@ -28,3 +28,7 @@ EXTRA_OECMAKE += "\
 "
 
 TARGET_CFLAGS += "-Wno-error=maybe-uninitialized"
+
+FILES:${PN}-dev += "\
+    ${libdir}/${PN}/cmake \
+"
