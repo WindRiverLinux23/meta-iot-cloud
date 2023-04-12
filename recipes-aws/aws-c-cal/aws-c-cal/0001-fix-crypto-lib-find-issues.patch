@@ -1,0 +1,99 @@
+From c4e02d71b82e0622c6af8b4874dcbd666603dec6 Mon Sep 17 00:00:00 2001
+From: Wentao Zhang <wentao.zhang@windriver.com>
+Date: Fri, 21 Apr 2023 03:07:10 +0000
+Subject: [PATCH] fix crypto lib find issues
+
+Upstream-Status: Inappropriate [oe specific]
+
+Signed-off-by: Wentao Zhang <wentao.zhang@windriver.com>
+---
+ CMakeLists.txt                    | 16 ++++------------
+ cmake/modules/FindLibCrypto.cmake | 16 ++++++++--------
+ 2 files changed, 12 insertions(+), 20 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index af50925..0dac33f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -86,16 +86,8 @@ else ()
+         if (USE_OPENSSL AND NOT ANDROID)
+             find_package(OpenSSL REQUIRED)
+             find_package(Threads REQUIRED)
+-            add_library(crypto UNKNOWN IMPORTED)
+-            set_target_properties(crypto PROPERTIES
+-                INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}")
+-            set_target_properties(crypto PROPERTIES
+-                IMPORTED_LINK_INTERFACE_LANGUAGES "C"
+-                IMPORTED_LOCATION "${OPENSSL_CRYPTO_LIBRARY}")
+-            add_dependencies(crypto Threads::Threads)
+-            message(STATUS "Using libcrypto from system: ${OPENSSL_CRYPTO_LIBRARY}")
+         elseif(NOT USE_OPENSSL AND IN_SOURCE_BUILD)
+-            if (TARGET crypto)
++            if (TARGET crypto OR TARGET AWS::crypto)
+                 message(STATUS "Using libcrypto from AWS-LC")
+             else()
+                 message(FATAL_ERROR "Target crypto is not defined, failed to find libcrypto.")
+@@ -104,7 +96,7 @@ else ()
+             find_package(LibCrypto REQUIRED)
+             message(STATUS "Using automatic libcrypto: ${LibCrypto_LIBRARY}")
+         endif()
+-        set(PLATFORM_LIBS crypto dl)
++        set(PLATFORM_LIBS AWS::crypto dl)
+     endif()
+ endif()
+ 
+@@ -134,8 +126,8 @@ target_link_libraries(${PROJECT_NAME}_static PUBLIC ${DEP_AWS_LIBS} ${PLATFORM_L
+ if (BYO_CRYPTO)
+     target_compile_definitions(${PROJECT_NAME} PRIVATE -DBYO_CRYPTO)
+ elseif (NOT WIN32 AND NOT APPLE)
+-    target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:crypto,INTERFACE_INCLUDE_DIRECTORIES>)
+-    target_include_directories(${PROJECT_NAME}_static PRIVATE $<TARGET_PROPERTY:crypto,INTERFACE_INCLUDE_DIRECTORIES>)
++    target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:AWS::crypto,INTERFACE_INCLUDE_DIRECTORIES>)
++    target_include_directories(${PROJECT_NAME}_static PRIVATE $<TARGET_PROPERTY:AWS::crypto,INTERFACE_INCLUDE_DIRECTORIES>)
+ endif()
+ 
+ # Our ABI is not yet stable
+diff --git a/cmake/modules/FindLibCrypto.cmake b/cmake/modules/FindLibCrypto.cmake
+index 564ba97..987120c 100644
+--- a/cmake/modules/FindLibCrypto.cmake
++++ b/cmake/modules/FindLibCrypto.cmake
+@@ -18,9 +18,9 @@
+ find_package(crypto QUIET)
+ 
+ if (crypto_FOUND)
+-    get_target_property(crypto_INCLUDE_DIR crypto INTERFACE_INCLUDE_DIRECTORIES)
+-    message(STATUS "aws-c-cal found target: crypto")
+-    message(STATUS "crypto Include Dir: ${crypto_INCLUDE_DIR}")
++    get_target_property(crypto_INCLUDE_DIR ${TARGET_NAME} INTERFACE_INCLUDE_DIRECTORIES)
++    message(STATUS "aws-c-cal found target: ${TARGET_NAME}")
++    message(STATUS "${TARGET_NAME} Include Dir: ${crypto_INCLUDE_DIR}")
+     # some versions of cmake have a super esoteric bug around capitalization differences between
+     # find dependency and find package, just avoid that here by setting both.
+     set(LIBCRYPTO_FOUND true)
+@@ -92,18 +92,18 @@ else()
+         message(STATUS "LibCrypto Include Dir: ${LibCrypto_INCLUDE_DIR}")
+         message(STATUS "LibCrypto Shared Lib:  ${LibCrypto_SHARED_LIBRARY}")
+         message(STATUS "LibCrypto Static Lib:  ${LibCrypto_STATIC_LIBRARY}")
+-        if (NOT TARGET crypto AND
++        if (NOT TARGET AWS::crypto AND
+             (EXISTS "${LibCrypto_LIBRARY}")
+             )
+             set(THREADS_PREFER_PTHREAD_FLAG ON)
+             find_package(Threads REQUIRED)
+-            add_library(crypto UNKNOWN IMPORTED)
+-            set_target_properties(crypto PROPERTIES
++            add_library(AWS::crypto UNKNOWN IMPORTED)
++            set_target_properties(AWS::crypto PROPERTIES
+                 INTERFACE_INCLUDE_DIRECTORIES "${LibCrypto_INCLUDE_DIR}")
+-            set_target_properties(crypto PROPERTIES
++            set_target_properties(AWS::crypto PROPERTIES
+                 IMPORTED_LINK_INTERFACE_LANGUAGES "C"
+                 IMPORTED_LOCATION "${LibCrypto_LIBRARY}")
+-            add_dependencies(crypto Threads::Threads)
++            add_dependencies(AWS::crypto Threads::Threads)
+         endif()
+     endif()
+ endif()
+-- 
+2.35.5
+

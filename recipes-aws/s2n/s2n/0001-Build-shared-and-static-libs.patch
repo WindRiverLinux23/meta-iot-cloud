@@ -1,0 +1,284 @@
+From 6af02819c8ffc7c0e7dcf9b7283ee142238dfe0d Mon Sep 17 00:00:00 2001
+From: Scott Ware <scott.r.ware@intel.com>
+Date: Tue, 18 Apr 2023 17:44:39 +0800
+Subject: [PATCH] Build shared and static libs
+
+Signed-off-by: Scott Ware <scott.r.ware@intel.com>
+
+Upstream-Status: Inappropriate [oe specific]
+Signed-off-by: Hongxu Jia <hongxu.jia@windriver.com>
+Signed-off-by: Wentao Zhang <wentao.zhang@windriver.com>
+---
+ CMakeLists.txt         | 58 +++++++++++++++++++++++++++++++++++-------
+ cmake/s2n-config.cmake | 17 +------------
+ 2 files changed, 50 insertions(+), 25 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 64b996cc..e73ab558 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -259,9 +259,12 @@ file(GLOB S2N_SRC
+     ${UTILS_SRC}
+ )
+ 
+-add_library(${PROJECT_NAME} ${S2N_HEADERS} ${S2N_SRC})
++add_library(${PROJECT_NAME} SHARED ${S2N_HEADERS} ${S2N_SRC})
+ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE C)
+ 
++add_library(${PROJECT_NAME}_static STATIC ${S2N_HEADERS} ${S2N_SRC})
++set_target_properties(${PROJECT_NAME}_static PROPERTIES LINKER_LANGUAGE C OUTPUT_NAME ${PROJECT_NAME})
++
+ # Version numbers are for major updates only- we won't track minor/patch updates here.
+ set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
+ set_target_properties(${PROJECT_NAME} PROPERTIES SOVERSION ${VERSION_MAJOR})
+@@ -273,25 +276,36 @@ target_compile_options(${PROJECT_NAME} PRIVATE -pedantic -std=gnu99 -Wall -Wimpl
+         -Wno-missing-braces -Wno-strict-prototypes -Wa,--noexecstack
+ )
+ 
++target_compile_options(${PROJECT_NAME}_static PRIVATE -pedantic -std=gnu99 -Wall -Wimplicit -Wunused -Wcomment -Wchar-subscripts
++        -Wuninitialized -Wshadow -Wcast-align -Wwrite-strings -Wno-deprecated-declarations -Wno-unknown-pragmas -Wformat-security
++        -Wno-missing-braces -Wno-strict-prototypes -Wa,--noexecstack
++)
++
+ if (EXPERIMENTAL_TREAT_WARNINGS_AS_ERRORS)
+     target_compile_options(${PROJECT_NAME} PRIVATE -Wsign-compare )
++    target_compile_options(${PROJECT_NAME}_static PRIVATE -Wsign-compare )
+ endif()
+ 
+ if (UNSAFE_TREAT_WARNINGS_AS_ERRORS)
+     target_compile_options(${PROJECT_NAME} PRIVATE -Werror )
++    target_compile_options(${PROJECT_NAME}_static PRIVATE -Werror )
+ endif ()
+ 
+ if(BUILD_TESTING AND BUILD_SHARED_LIBS)
+     target_compile_options(${PROJECT_NAME} PRIVATE -fvisibility=default)
++    target_compile_options(${PROJECT_NAME}_static PRIVATE -fvisibility=default)
+ else()
+     target_compile_options(${PROJECT_NAME} PRIVATE -fvisibility=hidden -DS2N_EXPORTS)
++    target_compile_options(${PROJECT_NAME}_static PRIVATE -fvisibility=hidden -DS2N_EXPORTS)
+ endif()
+ 
+ if(S2N_LTO)
+     target_compile_options(${PROJECT_NAME} PRIVATE -flto)
++    target_compile_options(${PROJECT_NAME}_static PRIVATE -flto)
+     # if we're building a static lib, make it easier for consuming applications to also perform LTO
+     if(NOT BUILD_SHARED_LIBS)
+         target_compile_options(${PROJECT_NAME} PRIVATE -ffunction-sections -fdata-sections)
++        target_compile_options(${PROJECT_NAME}_static PRIVATE -ffunction-sections -fdata-sections)
+     endif()
+ endif()
+ 
+@@ -301,6 +315,7 @@ endif()
+ 
+ if(S2N_NO_PQ)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_NO_PQ)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_NO_PQ)
+ endif()
+ 
+ # Whether to fail the build when compiling s2n's portable C code with non-portable assembly optimizations. Doing this
+@@ -310,31 +325,37 @@ endif()
+ # deploy to, and can enable more CPU optimizations.
+ if(S2N_BLOCK_NONPORTABLE_OPTIMIZATIONS)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_BLOCK_NONPORTABLE_OPTIMIZATIONS=1)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_BLOCK_NONPORTABLE_OPTIMIZATIONS=1)
+ endif()
+ 
+ if(KYBER512R3_AVX2_BMI2_OPT_SUPPORTED)
+     FILE(GLOB KYBER512R3_AVX2_BMI2_SRCS "pq-crypto/kyber_r3/*_avx2.c")
+     set_source_files_properties(${KYBER512R3_AVX2_BMI2_SRCS} PROPERTIES COMPILE_FLAGS ${KYBER512R3_AVX2_BMI2_FLAGS})
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_KYBER512R3_AVX2_BMI2)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_KYBER512R3_AVX2_BMI2)
+ 
+     message(STATUS "Enabling Kyber_R3 x86_64 optimizations")
+ endif()
+ 
+ if(S2N_HAVE_EXECINFO AND S2N_STACKTRACE)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_STACKTRACE)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_STACKTRACE)
+ else()
+     message(STATUS "Disabling stacktrace functionality")
+ endif()
+ 
+ if(S2N_CPUID_AVAILABLE)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_CPUID_AVAILABLE)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_CPUID_AVAILABLE)
+ endif()
+ 
+ if(S2N_FEATURES_AVAILABLE)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_FEATURES_AVAILABLE)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_FEATURES_AVAILABLE)
+ endif()
+ 
+ target_compile_options(${PROJECT_NAME} PUBLIC -fPIC)
++target_compile_options(${PROJECT_NAME}_static PUBLIC -fPIC)
+ 
+ target_compile_definitions(${PROJECT_NAME} PRIVATE -D_POSIX_C_SOURCE=200809L)
+ if(CMAKE_BUILD_TYPE MATCHES Release)
+@@ -343,32 +364,39 @@ endif()
+ 
+ if(NO_STACK_PROTECTOR)
+     target_compile_options(${PROJECT_NAME} PRIVATE -Wstack-protector -fstack-protector-all)
++    target_compile_options(${PROJECT_NAME}_static PRIVATE -Wstack-protector -fstack-protector-all)
+ endif()
+ 
+ if(S2N_UNSAFE_FUZZING_MODE)
+     target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize-coverage=trace-pc-guard -fsanitize=address,undefined,leak -fuse-ld=gold -DS2N_ADDRESS_SANITIZER=1)
++    target_compile_options(${PROJECT_NAME}_static PRIVATE -fsanitize-coverage=trace-pc-guard -fsanitize=address,undefined,leak -fuse-ld=gold -DS2N_ADDRESS_SANITIZER=1)
+ endif()
+ 
+ if (FALL_THROUGH_SUPPORTED)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_FALL_THROUGH_SUPPORTED)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_FALL_THROUGH_SUPPORTED)
+ endif()
+ 
+ if (__RESTRICT__SUPPORTED)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N___RESTRICT__SUPPORTED)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N___RESTRICT__SUPPORTED)
+ endif()
+ 
+ if (MADVISE_SUPPORTED)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_MADVISE_SUPPORTED)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_MADVISE_SUPPORTED)
+     message(STATUS "madvise() support detected")
+ endif()
+ 
+ if (MINHERIT_SUPPORTED)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_MINHERIT_SUPPORTED)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_MINHERIT_SUPPORTED)
+     message(STATUS "minherit() support detected")
+ endif()
+ 
+ if (CLONE_SUPPORTED)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_CLONE_SUPPORTED)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_CLONE_SUPPORTED)
+     message(STATUS "clone() support detected")
+ endif()
+ 
+@@ -377,6 +405,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+ if (NOT $ENV{S2N_LIBCRYPTO} STREQUAL "awslc")
+     # add cast-qual back in for non AWS-LC
+     target_compile_options(${PROJECT_NAME} PRIVATE -Wcast-qual)
++    target_compile_options(${PROJECT_NAME}_static PRIVATE -Wcast-qual)
+ endif()
+ 
+ if (COVERAGE)
+@@ -388,6 +417,7 @@ if (COVERAGE)
+         message(FATAL_ERROR "This project requires clang for coverage support")
+     endif()
+     target_compile_options(${PROJECT_NAME} PUBLIC -fprofile-instr-generate -fcoverage-mapping)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -fprofile-instr-generate -fcoverage-mapping)
+     target_link_options(${PROJECT_NAME} PUBLIC -fprofile-instr-generate -fcoverage-mapping)
+ endif()
+ 
+@@ -425,6 +455,7 @@ try_compile(
+ )
+ if (LIBCRYPTO_SUPPORTS_EVP_MD5_SHA1_HASH)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_LIBCRYPTO_SUPPORTS_EVP_MD5_SHA1_HASH)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_LIBCRYPTO_SUPPORTS_EVP_MD5_SHA1_HASH)
+ endif()
+ 
+ # Determine if RC4 is available in libcrypto
+@@ -437,6 +468,7 @@ try_compile(
+ 
+ if (LIBCRYPTO_SUPPORTS_EVP_RC4)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_LIBCRYPTO_SUPPORTS_EVP_RC4)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_LIBCRYPTO_SUPPORTS_EVP_RC4)
+ endif()
+ 
+ # Determine if EVP_MD_CTX_set_pkey_ctx is available in libcrypto
+@@ -450,6 +482,7 @@ try_compile(
+ 
+ if (LIBCRYPTO_SUPPORTS_EVP_MD_CTX_SET_PKEY_CTX)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_LIBCRYPTO_SUPPORTS_EVP_MD_CTX_SET_PKEY_CTX)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_LIBCRYPTO_SUPPORTS_EVP_MD_CTX_SET_PKEY_CTX)
+ endif()
+ 
+ # Determine if KEM Kyber512 implementation from AWS-LC is available
+@@ -463,6 +496,7 @@ try_compile(
+ 
+ if(LIBCRYPTO_SUPPORTS_EVP_KEM_KYBER_512)
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_LIBCRYPTO_SUPPORTS_KYBER512)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_LIBCRYPTO_SUPPORTS_KYBER512)
+ endif()
+ 
+ # Determine if kTLS is supported
+@@ -474,6 +508,7 @@ try_compile(
+ if(PLATFORM_SUPPORTS_KTLS)
+     message(STATUS "feature probe: kTLS supported")
+     target_compile_options(${PROJECT_NAME} PUBLIC -DS2N_PLATFORM_SUPPORTS_KTLS)
++    target_compile_options(${PROJECT_NAME}_static PUBLIC -DS2N_PLATFORM_SUPPORTS_KTLS)
+ endif()
+ 
+ if (NOT DEFINED CMAKE_AR)
+@@ -588,10 +623,14 @@ else()
+ endif()
+ 
+ target_link_libraries(${PROJECT_NAME} PUBLIC ${OS_LIBS} m)
++target_link_libraries(${PROJECT_NAME}_static PUBLIC ${OS_LIBS} m)
+ 
+ target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
++target_include_directories(${PROJECT_NAME}_static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+ target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/api> $<INSTALL_INTERFACE:include>)
+-
++target_include_directories(${PROJECT_NAME}_static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/api> $<INSTALL_INTERFACE:include>)
++target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:AWS::crypto,INTERFACE_INCLUDE_DIRECTORIES>)
++target_include_directories(${PROJECT_NAME}_static PRIVATE $<TARGET_PROPERTY:AWS::crypto,INTERFACE_INCLUDE_DIRECTORIES>)
+ if (BUILD_TESTING)
+     enable_testing()
+ 
+@@ -756,19 +795,20 @@ install(
+         RUNTIME DESTINATION bin COMPONENT Runtime
+ )
+ 
++install(
++        TARGETS ${PROJECT_NAME}_static
++        EXPORT ${PROJECT_NAME}-targets
++        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Development
++        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Runtime
++        RUNTIME DESTINATION bin COMPONENT Runtime
++)
+ 
+ configure_file("cmake/${PROJECT_NAME}-config.cmake"
+         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
+         @ONLY)
+ 
+-if (BUILD_SHARED_LIBS)
+-   set (TARGET_DIR "shared")
+-else()
+-   set (TARGET_DIR "static")
+-endif()
+-
+ install(EXPORT "${PROJECT_NAME}-targets"
+-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}/cmake/${TARGET_DIR}"
++        DESTINATION "${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}/cmake"
+         NAMESPACE AWS::
+         COMPONENT Development)
+ 
+diff --git a/cmake/s2n-config.cmake b/cmake/s2n-config.cmake
+index 943d5d14..14e0f74f 100644
+--- a/cmake/s2n-config.cmake
++++ b/cmake/s2n-config.cmake
+@@ -8,19 +8,4 @@ endif()
+ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/modules")
+ find_dependency(crypto)
+ 
+-# Allow static or shared lib to be used.
+-# If both are installed, choose based on BUILD_SHARED_LIBS.
+-if (BUILD_SHARED_LIBS)
+-    if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/shared")
+-        include(${CMAKE_CURRENT_LIST_DIR}/shared/@PROJECT_NAME@-targets.cmake)
+-    else()
+-        include(${CMAKE_CURRENT_LIST_DIR}/static/@PROJECT_NAME@-targets.cmake)
+-    endif()
+-else()
+-    if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/static")
+-        include(${CMAKE_CURRENT_LIST_DIR}/static/@PROJECT_NAME@-targets.cmake)
+-    else()
+-        include(${CMAKE_CURRENT_LIST_DIR}/shared/@PROJECT_NAME@-targets.cmake)
+-    endif()
+-endif()
+-
++include(${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@-targets.cmake)
+-- 
+2.25.1
+
