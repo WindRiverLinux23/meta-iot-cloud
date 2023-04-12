@@ -18,6 +18,7 @@ RDEPENDS:${PN} += " \
 SRC_URI = "\
     git://github.com/awslabs/${BPN}.git;protocol=https;branch=main \
     file://Build-static-and-shared-libs.patch \
+    file://0001-fix-crypto-lib-find-issues.patch \
 "
 
 # v0.5.12
