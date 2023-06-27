@@ -27,6 +27,7 @@ SRCREV = "c4c5b175e05f2affe5e3f0203ca6c8bc5cdd8f51"
 S = "${WORKDIR}/git"
 
 TARGET_CFLAGS += "-Wno-error=address -Wno-error=deprecated-declarations"
+CFLAGS:append = " -Wl,-Bsymbolic"
 
 EXTRA_OECMAKE += "\
     -DBUILD_TESTING=OFF \

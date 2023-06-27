@@ -35,3 +35,5 @@ SRCREV = "aa2cf25e5e4bd163e6e88844c8dadc65888b1d10"
 PR = "r0"
 
 S = "${WORKDIR}/git"
+
+CFLAGS:append = " -Wl,-Bsymbolic"
